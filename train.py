@@ -14,9 +14,6 @@ PATH_GT = './dataset/UIEB/GT/'
 SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-
-os.makedirs(SAVE_DIR, exist_ok=True)
-
 class DepthDataset(Dataset):
     def __init__(self, input_path, depth_path, gt_path):
         self.input_list = sorted([f for f in os.listdir(input_path) if f.endswith('.png')])
