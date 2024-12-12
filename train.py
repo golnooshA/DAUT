@@ -6,11 +6,13 @@ from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
 from net.Ushape_Trans import Generator, Discriminator, weights_init_normal
 
+
 # Paths
 PATH_INPUT = './dataset/UIEB/input'
 PATH_DEPTH = './DPT/output_monodepth/UIEB/'
 PATH_GT = './dataset/UIEB/GT/'
-SAVE_DIR = './save_model/'
+SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+os.makedirs(SAVE_DIR, exist_ok=True)
 
 
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -124,5 +126,8 @@ for epoch in range(n_epochs):
         loss_D.backward()  # No retain_graph needed here
         optimizer_D.step()
 
+        torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch+1}.pth'))
+        torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch+1}.pth'))
+        print(f"Saved generator and discriminator for epoch {epoch+1} to {SAVE_DIR}")
         print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]")
 
