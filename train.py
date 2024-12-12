@@ -7,18 +7,19 @@ import torch.nn.functional as F
 from net.Ushape_Trans import Generator, Discriminator, weights_init_normal
 
 # Paths
-PATH_INPUT = './dataset/LSUI/input'
-PATH_DEPTH = './DPT/output_monodepth/LSUI/'
-PATH_GT = './dataset/LSUI/GT/'
+PATH_INPUT = './dataset/UIEB/input'
+PATH_DEPTH = './DPT/output_monodepth/UIEB/'
+PATH_GT = './dataset/UIEB/GT/'
 SAVE_DIR = './save_model/'
+
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class DepthDataset(Dataset):
     def __init__(self, input_path, depth_path, gt_path):
-        self.input_list = sorted([f for f in os.listdir(input_path) if f.endswith('.jpg')])
+        self.input_list = sorted([f for f in os.listdir(input_path) if f.endswith('.png')])
         self.depth_list = sorted([f for f in os.listdir(depth_path) if f.endswith('.png')])
-        self.gt_list = sorted([f for f in os.listdir(gt_path) if f.endswith('.jpg')])
+        self.gt_list = sorted([f for f in os.listdir(gt_path) if f.endswith('.png')])
         self.input_path = input_path
         self.depth_path = depth_path
         self.gt_path = gt_path
