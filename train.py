@@ -123,8 +123,15 @@ for epoch in range(n_epochs):
         loss_D.backward()  # No retain_graph needed here
         optimizer_D.step()
 
+        # Save per-epoch models
         torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch+1}.pth'))
         torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch+1}.pth'))
-        print(f"Saved generator and discriminator for epoch {epoch+1} to {SAVE_DIR}")
+
+        # Save final models after training
+        if epoch == n_epochs - 1:
+            torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
+            torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, 'discriminator_final.pth'))
+            print(f"Final generator and discriminator models saved to {SAVE_DIR}")
+            
         print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]")
 
