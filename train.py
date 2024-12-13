@@ -51,14 +51,14 @@ train_dataset = DepthDataset(PATH_INPUT, PATH_DEPTH, PATH_GT)
 train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=0)
 print(f"Loaded dataset with {len(train_dataset)} valid samples.")
 
-generator = Generator().to('cpu')
-discriminator = Discriminator().to('cpu')
+generator = Generator().cuda()
+discriminator = Discriminator().cuda()
 generator.apply(weights_init_normal)
 discriminator.apply(weights_init_normal)
 
 # Loss functions
-criterion_GAN = nn.MSELoss().to('cpu')
-criterion_pixelwise = nn.L1Loss().to('cpu')
+criterion_GAN = nn.MSELoss().cuda()
+criterion_pixelwise = nn.L1Loss().cuda()
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999))
@@ -69,7 +69,8 @@ for epoch in range(n_epochs):
     print(f"Starting epoch {epoch+1}/{n_epochs}")
     for i, (real_A, real_B) in enumerate(train_loader):
         # Ensure tensors are on CPU
-        real_A, real_B = real_A.to('cpu'), real_B.to('cpu')
+        real_A, real_B = real_A.cuda(), real_B.cuda()
+
 
 
         # Multi-scale real_B and real_A
