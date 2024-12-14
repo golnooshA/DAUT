@@ -67,19 +67,19 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5
 
 # Resume from checkpoint
 start_epoch = 0
-generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_120.pth')
-discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_120.pth')
+generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_135.pth')
+discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_135.pth')
 
 if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint):
     generator.load_state_dict(torch.load(generator_checkpoint, weights_only=True))
-    print(f"Loaded generator checkpoint from epoch 120.")
+    print(f"Loaded generator checkpoint from epoch 135.")
     checkpoint = torch.load(discriminator_checkpoint, weights_only=True)
     model_dict = discriminator.state_dict()
     pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and v.size() == model_dict[k].size()}
     model_dict.update(pretrained_dict)
     discriminator.load_state_dict(model_dict)
-    print(f"Loaded discriminator checkpoint with partial matching from epoch 120.")
-    start_epoch = 120  # Update start_epoch only if checkpoints exist
+    print(f"Loaded discriminator checkpoint with partial matching from epoch 135.")
+    start_epoch = 135  # Update start_epoch only if checkpoints exist
 else:
     print("No checkpoint found. Starting from scratch.")
 
