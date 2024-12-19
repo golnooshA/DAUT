@@ -33,7 +33,7 @@ class DepthEncoder(nn.Module):
         return x
 
 
-# Self-Attention Block
+# Self-Attention Block with Downsample
 class SelfAttention(nn.Module):
     def __init__(self, in_channels):
         super(SelfAttention, self).__init__()
@@ -46,16 +46,15 @@ class SelfAttention(nn.Module):
         batch, c, h, w = x.size()
         scale = 2  # Downsampling factor
         x_downsampled = F.interpolate(x, scale_factor=1/scale, mode='bilinear', align_corners=False)
-        query = self.query(x_downsampled).view(batch, -1, (h//scale) * (w//scale)).permute(0, 2, 1)
-        key = self.key(x_downsampled).view(batch, -1, (h//scale) * (w//scale))
+        query = self.query(x_downsampled).view(batch, -1, (h // scale) * (w // scale)).permute(0, 2, 1)
+        key = self.key(x_downsampled).view(batch, -1, (h // scale) * (w // scale))
         attention = torch.bmm(query, key)
         attention = F.softmax(attention, dim=-1)
-        value = self.value(x_downsampled).view(batch, -1, (h//scale) * (w//scale))
+        value = self.value(x_downsampled).view(batch, -1, (h // scale) * (w // scale))
         out = torch.bmm(value, attention.permute(0, 2, 1))
-        out = out.view(batch, c, h//scale, w//scale)
+        out = out.view(batch, c, h // scale, w // scale)
         out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=False)
         return self.gamma * out + x
-
 
 
 # Generator with Depth Encoder and Self-Attention
@@ -111,8 +110,7 @@ class Generator(nn.Module):
         return output
 
 
-
-# Discriminator (unchanged)
+# Discriminator with Size Consistency Fix
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
@@ -137,6 +135,12 @@ class Discriminator(nn.Module):
         """
         assert len(inputs) == 4 and len(conditions) == 4, "Inputs must be lists of 4 tensors each."
 
+        # Ensure the spatial sizes of inputs and conditions match at the highest resolution
+        if inputs[3].size(2) != conditions[3].size(2) or inputs[3].size(3) != conditions[3].size(3):
+            conditions[3] = F.interpolate(
+                conditions[3], size=inputs[3].size()[2:], mode="bilinear", align_corners=False
+            )
+
         x = torch.cat([inputs[3], conditions[3]], dim=1)
         y = self.initial_conv(x)
 
@@ -144,6 +148,7 @@ class Discriminator(nn.Module):
             input_feature = inputs[2 - i]
             condition_feature = conditions[2 - i]
 
+            # Ensure sizes match before concatenation
             if input_feature.size(2) != condition_feature.size(2) or input_feature.size(3) != condition_feature.size(3):
                 condition_feature = F.interpolate(condition_feature, size=input_feature.size()[2:], mode="bilinear", align_corners=False)
 
@@ -161,3 +166,4 @@ class Discriminator(nn.Module):
 
         y = self.final_layer(y)
         return y
+

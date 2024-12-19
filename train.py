@@ -78,7 +78,7 @@ def main():
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
     # Mixed Precision Scaler
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.amp.GradScaler()
 
     # Training Loop
     n_epochs = 300
@@ -93,13 +93,38 @@ def main():
         for i, (real_A, real_B) in enumerate(train_loader):
             real_A, real_B = real_A.cuda(), real_B.cuda()
 
+            # Prepare multi-scale versions of real_A and real_B
+            real_A_scales = [
+                F.interpolate(real_A, size=(32, 32), mode="bilinear", align_corners=False),
+                F.interpolate(real_A, size=(64, 64), mode="bilinear", align_corners=False),
+                F.interpolate(real_A, size=(128, 128), mode="bilinear", align_corners=False),
+                real_A,  # Full resolution
+            ]
+            real_B_scales = [
+                F.interpolate(real_B, size=(32, 32), mode="bilinear", align_corners=False),
+                F.interpolate(real_B, size=(64, 64), mode="bilinear", align_corners=False),
+                F.interpolate(real_B, size=(128, 128), mode="bilinear", align_corners=False),
+                real_B,  # Full resolution
+            ]
+
             # Train Generator
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 fake_B = generator(real_A)
-                pred_fake = discriminator(fake_B, real_A)
+                # Explicitly resize `fake_B` to match `real_B`
+                fake_B = F.interpolate(fake_B, size=real_B.shape[2:], mode="bilinear", align_corners=False)
+
+                fake_B_scales = [
+                    F.interpolate(fake_B, size=(32, 32), mode="bilinear", align_corners=False),
+                    F.interpolate(fake_B, size=(64, 64), mode="bilinear", align_corners=False),
+                    F.interpolate(fake_B, size=(128, 128), mode="bilinear", align_corners=False),
+                    fake_B,  # Full resolution
+                ]
+
+                pred_fake = discriminator(fake_B_scales, real_A_scales)
                 loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
-                loss_pixel = criterion_pixelwise(fake_B, real_B)
+                loss_pixel = criterion_pixelwise(fake_B, real_B)  # This now works without error
                 loss_G = loss_GAN + 100 * loss_pixel
+
 
             scaler.scale(loss_G / accumulation_steps).backward()
 
@@ -110,9 +135,9 @@ def main():
                 optimizer_G.zero_grad(set_to_none=True)
 
             # Train Discriminator
-            with torch.cuda.amp.autocast():
-                pred_real = discriminator(real_B, real_A)
-                pred_fake = discriminator(fake_B.detach(), real_A)
+            with torch.amp.autocast('cuda'):
+                pred_real = discriminator(real_B_scales, real_A_scales)
+                pred_fake = discriminator(fake_B_scales, real_A_scales)
                 loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
                 loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
                 loss_D = 0.5 * (loss_real + loss_fake)
