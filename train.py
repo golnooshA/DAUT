@@ -123,7 +123,7 @@ def main():
                 loss_pixel = criterion_pixelwise(fake_B, real_B)
                 loss_G = loss_GAN + 100 * loss_pixel
 
-            scaler.scale(loss_G / accumulation_steps).backward(retain_graph=True)  # Retain graph for further backward calls
+            scaler.scale(loss_G / accumulation_steps).backward()  # No need for `retain_graph`
 
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_G)
