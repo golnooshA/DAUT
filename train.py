@@ -11,7 +11,7 @@ def main():
     PATH_INPUT = './dataset/UIEB/input'
     PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed'
     PATH_GT = './dataset/UIEB/GT/'
-    SAVE_DIR = './save_model/'
+    SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
     os.makedirs(SAVE_DIR, exist_ok=True)
 
