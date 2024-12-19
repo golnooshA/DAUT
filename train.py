@@ -100,8 +100,22 @@ def main():
                 fake_B = generator(real_A)
                 fake_B = F.interpolate(fake_B, size=real_B.shape[2:], mode="bilinear", align_corners=False)
                 
+                # Generate multi-scale versions for discriminator input
+                fake_B_scales = [
+                    F.interpolate(fake_B, size=(32, 32), mode="bilinear", align_corners=False),
+                    F.interpolate(fake_B, size=(64, 64), mode="bilinear", align_corners=False),
+                    F.interpolate(fake_B, size=(128, 128), mode="bilinear", align_corners=False),
+                    fake_B,  # Full resolution
+                ]
+                real_A_scales = [
+                    F.interpolate(real_A, size=(32, 32), mode="bilinear", align_corners=False),
+                    F.interpolate(real_A, size=(64, 64), mode="bilinear", align_corners=False),
+                    F.interpolate(real_A, size=(128, 128), mode="bilinear", align_corners=False),
+                    real_A,  # Full resolution
+                ]
+                
                 # Discriminator's prediction for fake images
-                pred_fake = discriminator([fake_B], [real_A])
+                pred_fake = discriminator(fake_B_scales, real_A_scales)
                 
                 # Losses for Generator
                 loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
@@ -118,11 +132,16 @@ def main():
             optimizer_D.zero_grad(set_to_none=True)
             with torch.amp.autocast('cuda'):
                 # Real images (discriminator)
-                pred_real = discriminator([real_B], [real_A])
+                real_B_scales = [
+                    F.interpolate(real_B, size=(32, 32), mode="bilinear", align_corners=False),
+                    F.interpolate(real_B, size=(64, 64), mode="bilinear", align_corners=False),
+                    F.interpolate(real_B, size=(128, 128), mode="bilinear", align_corners=False),
+                    real_B,  # Full resolution
+                ]
+                pred_real = discriminator(real_B_scales, real_A_scales)
                 
                 # Fake images (detached to stop gradients flowing back to the generator)
-                fake_B_detached = fake_B.detach()
-                pred_fake = discriminator([fake_B_detached], [real_A])
+                pred_fake = discriminator(fake_B_scales, real_A_scales)
                 
                 # Losses for Discriminator
                 loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
@@ -151,6 +170,7 @@ def main():
     torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
     torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, 'discriminator_final.pth'))
     print(f"Final generator and discriminator models saved to {SAVE_DIR}.")
+
 
 
 if __name__ == "__main__":
