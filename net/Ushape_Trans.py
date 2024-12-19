@@ -7,6 +7,8 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from net.block import from_rgb3, to_rgb, conv_block, up_conv, DisGeneralConvBlock, DisFinalBlock
 
+
+# Initialize weights
 def weights_init_normal(m):
     """Initialize weights with normal distribution."""
     if hasattr(m, 'weight') and m.weight is not None:
@@ -16,35 +18,91 @@ def weights_init_normal(m):
             torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
             torch.nn.init.constant_(m.bias.data, 0.0)
 
+
+# Depth Encoder for preprocessing depth features
+class DepthEncoder(nn.Module):
+    def __init__(self):
+        super(DepthEncoder, self).__init__()
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+
+    def forward(self, depth):
+        x = self.pool(F.relu(self.conv1(depth)))
+        x = self.pool(F.relu(self.conv2(x)))
+        return x
+
+
+# Self-Attention Block
+class SelfAttention(nn.Module):
+    def __init__(self, in_channels):
+        super(SelfAttention, self).__init__()
+        self.query = nn.Conv2d(in_channels, in_channels // 8, kernel_size=1)
+        self.key = nn.Conv2d(in_channels, in_channels // 8, kernel_size=1)
+        self.value = nn.Conv2d(in_channels, in_channels, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        batch, c, h, w = x.size()
+        query = self.query(x).view(batch, -1, h * w).permute(0, 2, 1)
+        key = self.key(x).view(batch, -1, h * w)
+        attention = torch.bmm(query, key)
+        attention = F.softmax(attention, dim=-1)
+        value = self.value(x).view(batch, -1, h * w)
+        out = torch.bmm(value, attention.permute(0, 2, 1))
+        out = out.view(batch, c, h, w)
+        return self.gamma * out + x
+
+
+# Generator with Depth Encoder and Self-Attention
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
-        self.Conv1 = conv_block(4, 16)
+        self.depth_encoder = DepthEncoder()
+        self.Conv1 = conv_block(3, 16)  # RGB input
         self.Conv2 = conv_block(16, 32)
         self.Conv3 = conv_block(32, 64)
         self.Conv4 = conv_block(64, 128)
-        self.Up1 = up_conv(128, 64)
+        self.Up1 = up_conv(128 + 32, 64)  # Include depth features
         self.Up2 = up_conv(64, 32)
         self.Up3 = up_conv(32, 16)
+        self.attention = SelfAttention(128)  # Self-Attention on the bottleneck features
         self.Output = nn.Conv2d(16, 3, kernel_size=1)
 
     def forward(self, x):
-        e1 = self.Conv1(x)
-        e2 = self.Conv2(e1)
-        e3 = self.Conv3(e2)
-        e4 = self.Conv4(e3)
+        """
+        Forward pass of the Generator.
+        x: Input tensor (combined RGB and depth channels).
+        """
+        # Split the input into RGB and depth components
+        input_rgb = x[:, :3, :, :]  # First 3 channels are RGB
+        input_depth = x[:, 3:, :, :]  # Last channel is depth
 
-        d1 = self.Up1(e4)
-        d1 = F.interpolate(d1, size=e3.size()[2:], mode="bilinear", align_corners=False)
-        d2 = self.Up2(d1 + e3)
-        d2 = F.interpolate(d2, size=e2.size()[2:], mode="bilinear", align_corners=False)
-        d3 = self.Up3(d2 + e2)
-        d3 = F.interpolate(d3, size=e1.size()[2:], mode="bilinear", align_corners=False)
+        # Process depth features
+        depth_features = self.depth_encoder(input_depth)
 
-        out = self.Output(d3 + e1)
-        return [d1, d2, d3, out]
+        # Process RGB features
+        rgb_features1 = self.Conv1(input_rgb)
+        rgb_features2 = self.Conv2(rgb_features1)
+        rgb_features3 = self.Conv3(rgb_features2)
+        rgb_features4 = self.Conv4(rgb_features3)
+
+        # Attention on bottleneck features
+        rgb_features4 = self.attention(rgb_features4)
+
+        # Combine RGB and depth features
+        combined_features = torch.cat([rgb_features4, depth_features], dim=1)
+
+        # Decode
+        out = self.Up1(combined_features)
+        out = self.Up2(out)
+        out = self.Up3(out)
+        output = self.Output(out)
+
+        return output
 
 
+# Discriminator (unchanged)
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
