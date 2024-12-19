@@ -138,7 +138,9 @@ def main():
                 loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
                 loss_D = 0.5 * (loss_real + loss_fake)
 
-            scaler.scale(loss_D / accumulation_steps).backward()
+            # scaler.scale(loss_D / accumulation_steps).backward()
+            scaler.scale(loss_D / accumulation_steps).backward(retain_graph=True)
+
 
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_D)
