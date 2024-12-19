@@ -87,66 +87,55 @@ def main():
 
     for epoch in range(n_epochs):
         print(f"Starting epoch {epoch + 1}/{n_epochs}")
-        optimizer_G.zero_grad(set_to_none=True)
-        optimizer_D.zero_grad(set_to_none=True)
-
+        generator.train()
+        discriminator.train()
+        
         for i, (real_A, real_B) in enumerate(train_loader):
             real_A, real_B = real_A.cuda(), real_B.cuda()
 
-            # Prepare multi-scale versions of real_A and real_B
-            real_A_scales = [
-                F.interpolate(real_A, size=(32, 32), mode="bilinear", align_corners=False),
-                F.interpolate(real_A, size=(64, 64), mode="bilinear", align_corners=False),
-                F.interpolate(real_A, size=(128, 128), mode="bilinear", align_corners=False),
-                real_A,  # Full resolution
-            ]
-            real_B_scales = [
-                F.interpolate(real_B, size=(32, 32), mode="bilinear", align_corners=False),
-                F.interpolate(real_B, size=(64, 64), mode="bilinear", align_corners=False),
-                F.interpolate(real_B, size=(128, 128), mode="bilinear", align_corners=False),
-                real_B,  # Full resolution
-            ]
-
-            # Train Generator
+            ### ----------- Train Generator ----------- ###
+            optimizer_G.zero_grad(set_to_none=True)
             with torch.amp.autocast('cuda'):
+                # Generate fake images
                 fake_B = generator(real_A)
                 fake_B = F.interpolate(fake_B, size=real_B.shape[2:], mode="bilinear", align_corners=False)
-                fake_B_scales = [
-                    F.interpolate(fake_B, size=(32, 32), mode="bilinear", align_corners=False),
-                    F.interpolate(fake_B, size=(64, 64), mode="bilinear", align_corners=False),
-                    F.interpolate(fake_B, size=(128, 128), mode="bilinear", align_corners=False),
-                    fake_B,  # Full resolution
-                ]
-
-                pred_fake = discriminator(fake_B_scales, real_A_scales)
+                
+                # Discriminator's prediction for fake images
+                pred_fake = discriminator([fake_B], [real_A])
+                
+                # Losses for Generator
                 loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
                 loss_pixel = criterion_pixelwise(fake_B, real_B)
                 loss_G = loss_GAN + 100 * loss_pixel
 
-            scaler.scale(loss_G / accumulation_steps).backward()  
+            scaler.scale(loss_G / accumulation_steps).backward()
 
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_G)
                 scaler.update()
-                optimizer_G.zero_grad(set_to_none=True)
 
-            # Train Discriminator
+            ### ----------- Train Discriminator ----------- ###
+            optimizer_D.zero_grad(set_to_none=True)
             with torch.amp.autocast('cuda'):
-                pred_real = discriminator(real_B_scales, real_A_scales)
-                pred_fake = discriminator(fake_B_scales, real_A_scales)
+                # Real images (discriminator)
+                pred_real = discriminator([real_B], [real_A])
+                
+                # Fake images (detached to stop gradients flowing back to the generator)
+                fake_B_detached = fake_B.detach()
+                pred_fake = discriminator([fake_B_detached], [real_A])
+                
+                # Losses for Discriminator
                 loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
                 loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
                 loss_D = 0.5 * (loss_real + loss_fake)
 
-            # scaler.scale(loss_D / accumulation_steps).backward()
-            scaler.scale(loss_D / accumulation_steps).backward(retain_graph=True)
-
+            scaler.scale(loss_D / accumulation_steps).backward()
 
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_D)
                 scaler.update()
-                optimizer_D.zero_grad(set_to_none=True)
 
+            # Print progress
             print(
                 f"[Epoch {epoch + 1}/{n_epochs}] [Batch {i + 1}/{len(train_loader)}] "
                 f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]"
@@ -162,6 +151,7 @@ def main():
     torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
     torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, 'discriminator_final.pth'))
     print(f"Final generator and discriminator models saved to {SAVE_DIR}.")
+
 
 if __name__ == "__main__":
     main()
