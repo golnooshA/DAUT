@@ -78,7 +78,7 @@ def main():
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
     # Mixed Precision Scaler
-    scaler = torch.amp.GradScaler()
+    scaler = torch.cuda.amp.GradScaler()
 
     # Training Loop
     n_epochs = 300
@@ -108,11 +108,9 @@ def main():
             ]
 
             # Train Generator
-                        # Train Generator
             with torch.amp.autocast('cuda'):
                 fake_B = generator(real_A)
                 fake_B = F.interpolate(fake_B, size=real_B.shape[2:], mode="bilinear", align_corners=False)
-
                 fake_B_scales = [
                     F.interpolate(fake_B, size=(32, 32), mode="bilinear", align_corners=False),
                     F.interpolate(fake_B, size=(64, 64), mode="bilinear", align_corners=False),
@@ -140,25 +138,8 @@ def main():
                 loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
                 loss_D = 0.5 * (loss_real + loss_fake)
 
-            scaler.scale(loss_D / accumulation_steps).backward()  # No need for retain_graph here
-
-            if (i + 1) % accumulation_steps == 0:
-                scaler.step(optimizer_D)
-                scaler.update()
-                optimizer_D.zero_grad(set_to_none=True)
-
-
-            # Train Discriminator
-            with torch.amp.autocast('cuda'):
-                pred_real = discriminator(real_B_scales, real_A_scales)
-                pred_fake = discriminator(fake_B_scales, real_A_scales)
-                loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
-                loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
-                loss_D = 0.5 * (loss_real + loss_fake)
-
             scaler.scale(loss_D / accumulation_steps).backward()
 
-            # Update discriminator after accumulation
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_D)
                 scaler.update()
