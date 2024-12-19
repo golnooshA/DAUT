@@ -108,9 +108,9 @@ def main():
             ]
 
             # Train Generator
+                        # Train Generator
             with torch.amp.autocast('cuda'):
                 fake_B = generator(real_A)
-                # Explicitly resize `fake_B` to match `real_B`
                 fake_B = F.interpolate(fake_B, size=real_B.shape[2:], mode="bilinear", align_corners=False)
 
                 fake_B_scales = [
@@ -122,17 +122,31 @@ def main():
 
                 pred_fake = discriminator(fake_B_scales, real_A_scales)
                 loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
-                loss_pixel = criterion_pixelwise(fake_B, real_B)  # This now works without error
+                loss_pixel = criterion_pixelwise(fake_B, real_B)
                 loss_G = loss_GAN + 100 * loss_pixel
 
+            scaler.scale(loss_G / accumulation_steps).backward(retain_graph=True)  # Retain graph for further backward calls
 
-            scaler.scale(loss_G / accumulation_steps).backward()
-
-            # Update generator after accumulation
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_G)
                 scaler.update()
                 optimizer_G.zero_grad(set_to_none=True)
+
+            # Train Discriminator
+            with torch.amp.autocast('cuda'):
+                pred_real = discriminator(real_B_scales, real_A_scales)
+                pred_fake = discriminator(fake_B_scales, real_A_scales)
+                loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
+                loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
+                loss_D = 0.5 * (loss_real + loss_fake)
+
+            scaler.scale(loss_D / accumulation_steps).backward()  # No need for retain_graph here
+
+            if (i + 1) % accumulation_steps == 0:
+                scaler.step(optimizer_D)
+                scaler.update()
+                optimizer_D.zero_grad(set_to_none=True)
+
 
             # Train Discriminator
             with torch.amp.autocast('cuda'):
