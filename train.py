@@ -78,7 +78,7 @@ def main():
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
     # Mixed Precision Scaler
-    scaler = torch.cuda.amp.GradScaler()
+    scaler = torch.amp.GradScaler()
 
     # Training Loop
     n_epochs = 300
@@ -123,7 +123,7 @@ def main():
                 loss_pixel = criterion_pixelwise(fake_B, real_B)
                 loss_G = loss_GAN + 100 * loss_pixel
 
-            scaler.scale(loss_G / accumulation_steps).backward()  # No need for `retain_graph`
+            scaler.scale(loss_G / accumulation_steps).backward()  
 
             if (i + 1) % accumulation_steps == 0:
                 scaler.step(optimizer_G)
@@ -145,11 +145,10 @@ def main():
                 scaler.update()
                 optimizer_D.zero_grad(set_to_none=True)
 
-            if (i + 1) % accumulation_steps == 0:
-                print(
-                    f"[Epoch {epoch + 1}/{n_epochs}] [Batch {i + 1}/{len(train_loader)}] "
-                    f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]"
-                )
+            print(
+                f"[Epoch {epoch + 1}/{n_epochs}] [Batch {i + 1}/{len(train_loader)}] "
+                f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]"
+            )
 
         # Save models every `save_freq` epochs
         if (epoch + 1) % save_freq == 0 or epoch == n_epochs - 1:
