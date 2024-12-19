@@ -44,14 +44,18 @@ class SelfAttention(nn.Module):
 
     def forward(self, x):
         batch, c, h, w = x.size()
-        query = self.query(x).view(batch, -1, h * w).permute(0, 2, 1)
-        key = self.key(x).view(batch, -1, h * w)
+        scale = 2  # Downsampling factor
+        x_downsampled = F.interpolate(x, scale_factor=1/scale, mode='bilinear', align_corners=False)
+        query = self.query(x_downsampled).view(batch, -1, (h//scale) * (w//scale)).permute(0, 2, 1)
+        key = self.key(x_downsampled).view(batch, -1, (h//scale) * (w//scale))
         attention = torch.bmm(query, key)
         attention = F.softmax(attention, dim=-1)
-        value = self.value(x).view(batch, -1, h * w)
+        value = self.value(x_downsampled).view(batch, -1, (h//scale) * (w//scale))
         out = torch.bmm(value, attention.permute(0, 2, 1))
-        out = out.view(batch, c, h, w)
+        out = out.view(batch, c, h//scale, w//scale)
+        out = F.interpolate(out, size=(h, w), mode='bilinear', align_corners=False)
         return self.gamma * out + x
+
 
 
 # Generator with Depth Encoder and Self-Attention
@@ -90,8 +94,13 @@ class Generator(nn.Module):
         # Attention on bottleneck features
         rgb_features4 = self.attention(rgb_features4)
 
+        # Resize depth features to match the spatial dimensions of rgb_features4
+        depth_features_resized = F.interpolate(
+            depth_features, size=rgb_features4.shape[2:], mode='bilinear', align_corners=False
+        )
+
         # Combine RGB and depth features
-        combined_features = torch.cat([rgb_features4, depth_features], dim=1)
+        combined_features = torch.cat([rgb_features4, depth_features_resized], dim=1)
 
         # Decode
         out = self.Up1(combined_features)
@@ -100,6 +109,7 @@ class Generator(nn.Module):
         output = self.Output(out)
 
         return output
+
 
 
 # Discriminator (unchanged)

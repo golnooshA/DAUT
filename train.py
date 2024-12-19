@@ -11,7 +11,7 @@ def main():
     PATH_INPUT = './dataset/UIEB/input'
     PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed'
     PATH_GT = './dataset/UIEB/GT/'
-    SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+    SAVE_DIR = './save_model/'
 
     os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -73,75 +73,69 @@ def main():
     criterion_GAN = nn.MSELoss().cuda()
     criterion_pixelwise = nn.L1Loss().cuda()
 
-    # Depth Loss
-    class DepthLoss(nn.Module):
-        def __init__(self):
-            super(DepthLoss, self).__init__()
-            self.mse = nn.MSELoss()
-
-        def forward(self, generated_depth, gt_depth):
-            return self.mse(generated_depth, gt_depth)
-
-    depth_loss_fn = DepthLoss().cuda()
-
     # Optimizers
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999))
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
     # Mixed Precision Scaler
-    scaler = torch.amp.GradScaler()
+    scaler = torch.cuda.amp.GradScaler()
 
     # Training Loop
     n_epochs = 300
     save_freq = 5  # Save every 5 epochs
+    accumulation_steps = 4
 
     for epoch in range(n_epochs):
-        print(f"Starting epoch {epoch+1}/{n_epochs}")
+        print(f"Starting epoch {epoch + 1}/{n_epochs}")
+        optimizer_G.zero_grad(set_to_none=True)
+        optimizer_D.zero_grad(set_to_none=True)
+
         for i, (real_A, real_B) in enumerate(train_loader):
             real_A, real_B = real_A.cuda(), real_B.cuda()
 
             # Train Generator
-            optimizer_G.zero_grad()
-            with torch.amp.autocast(device_type="cuda"):
+            with torch.cuda.amp.autocast():
                 fake_B = generator(real_A)
                 pred_fake = discriminator(fake_B, real_A)
-
-                # Compute losses
                 loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
-                loss_pixel = criterion_pixelwise(fake_B[-1], real_B)
-                loss_depth = depth_loss_fn(fake_B[-1][:, 3:, :, :], real_A[:, 3:, :, :])
-                loss_G = loss_GAN + 100 * loss_pixel + 10 * loss_depth
+                loss_pixel = criterion_pixelwise(fake_B, real_B)
+                loss_G = loss_GAN + 100 * loss_pixel
 
-            # Backpropagate and optimize
-            scaler.scale(loss_G).backward()
-            scaler.step(optimizer_G)
+            scaler.scale(loss_G / accumulation_steps).backward()
+
+            # Update generator after accumulation
+            if (i + 1) % accumulation_steps == 0:
+                scaler.step(optimizer_G)
+                scaler.update()
+                optimizer_G.zero_grad(set_to_none=True)
 
             # Train Discriminator
-            optimizer_D.zero_grad()
-            with torch.amp.autocast(device_type="cuda"):
+            with torch.cuda.amp.autocast():
                 pred_real = discriminator(real_B, real_A)
                 pred_fake = discriminator(fake_B.detach(), real_A)
-
-                # Discriminator losses
                 loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
                 loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
                 loss_D = 0.5 * (loss_real + loss_fake)
 
-            # Backpropagate and optimize
-            scaler.scale(loss_D).backward()
-            scaler.step(optimizer_D)
+            scaler.scale(loss_D / accumulation_steps).backward()
 
-            scaler.update()
+            # Update discriminator after accumulation
+            if (i + 1) % accumulation_steps == 0:
+                scaler.step(optimizer_D)
+                scaler.update()
+                optimizer_D.zero_grad(set_to_none=True)
 
-            print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]")
+            if (i + 1) % accumulation_steps == 0:
+                print(
+                    f"[Epoch {epoch + 1}/{n_epochs}] [Batch {i + 1}/{len(train_loader)}] "
+                    f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]"
+                )
 
         # Save models every `save_freq` epochs
         if (epoch + 1) % save_freq == 0 or epoch == n_epochs - 1:
-            torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch+1}.pth'))
-            torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch+1}.pth'))
-            torch.save({'optimizer_G': optimizer_G.state_dict(), 'optimizer_D': optimizer_D.state_dict()},
-                       os.path.join(SAVE_DIR, f'optimizer_epoch_{epoch+1}.pth'))
-            print(f"Saved models for epoch {epoch+1}.")
+            torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch + 1}.pth'))
+            torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch + 1}.pth'))
+            print(f"Saved models for epoch {epoch + 1}.")
 
     # Save final models
     torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
