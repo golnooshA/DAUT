@@ -122,7 +122,7 @@ def run(input_path, output_path, model_path, model_type="dpt_hybrid", optimize=T
 
             # Normalize and save depth map
             depth_map = normalize_depth(prediction)
-            filename = os.path.join(output_path, os.path.splitext(os.path.basename(img_name))[0] + "_depth.png")
+            filename = os.path.join(output_path, os.path.splitext(os.path.basename(img_name))[0] + "depth.png")
             cv2.imwrite(filename, depth_map)
             print(f"Saved depth map: {filename}")
 
