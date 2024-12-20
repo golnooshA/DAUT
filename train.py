@@ -164,17 +164,17 @@ import numpy as np
 
 # Paths
 PATH_INPUT = './dataset/UIEB/input'
-PATH_DEPTH = './DPT/output_monodepth/UIEB/'
+PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed'
 PATH_GT = './dataset/UIEB/GT/'
-# SAVE_DIR = 'C:/Users/golno/OneDrive/Desktop/Depth-Aware-U-shape-Transformer/save_model/'
-SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+SAVE_DIR = 'C:/Users/golno/OneDrive/Desktop/Depth-Aware-U-shape-Transformer/save_model/'
+# SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 class DepthDataset(Dataset):
     def __init__(self, input_path, depth_path, gt_path):
         self.input_list = sorted([f for f in os.listdir(input_path) if f.endswith('.png')])
-        self.depth_list = sorted([f for f in os.listdir(depth_path) if f.endswith('.png')])
+        self.depth_list = sorted([f for f in os.listdir(depth_path) if f.endswith('_depth.png')])
         self.gt_list = sorted([f for f in os.listdir(gt_path) if f.endswith('.png')])
         self.input_path = input_path
         self.depth_path = depth_path
