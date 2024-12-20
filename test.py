@@ -71,10 +71,10 @@ def extract_numeric_prefix(filename):
 
 def main():
     # Define paths
-    path_images = './dataset/LSUI/input/'  # Update to your input images path
-    path_depth = './DPT/output_monodepth/LSUI'  # Update to your depth maps path
-    output_path = './test/output/'  # Update to your output path
-    generator_path = './save_model/latest_net_G_A.pth'  # Corrected: Removed trailing slash
+    path_images = './dataset/UIEB/input' # Update to your input images path
+    path_depth = './DPT/output_monodepth/UIEB/'  # Update to your depth maps path
+    output_path = './test/out/'  # Update to your output path
+    generator_path = './save_model/generator.pth'  # Corrected: Removed trailing slash
     
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
