@@ -72,9 +72,9 @@ def extract_numeric_prefix(filename):
 def main():
     # Define paths
     path_images = './dataset/UIEB/input' # Update to your input images path
-    path_depth = './DPT/output_monodepth/UIEB/'  # Update to your depth maps path
-    output_path = './test/out/'  # Update to your output path
-    generator_path = './save_model/generator.pth'  # Corrected: Removed trailing slash
+    path_depth = './DPT/output_monodepth/UIEB_Changed'  # Update to your depth maps path
+    output_path = 'test/after' # Update to your output path
+    generator_path = 'generator_epoch_30.pth'  # Corrected: Removed trailing slash
     
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -93,7 +93,7 @@ def main():
     for i, img_file in enumerate(image_files):
         try:
             img_path = os.path.join(path_images, img_file)
-            depth_path = os.path.join(path_depth, f"{os.path.splitext(img_file)[0]}.png")
+            depth_path = os.path.join(path_depth, f"{os.path.splitext(img_file)[0]}depth.png")
 
             # Process image and depth map
             input_tensor = process_image(img_path, depth_path, dtype, device)

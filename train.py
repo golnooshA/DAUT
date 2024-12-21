@@ -11,8 +11,8 @@ import numpy as np
 PATH_INPUT = './dataset/UIEB/input'
 PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed'
 PATH_GT = './dataset/UIEB/GT/'
-# SAVE_DIR = './save_model'
-SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+SAVE_DIR = './save_model'
+# SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -75,10 +75,36 @@ criterion_pixelwise = nn.L1Loss().cuda()
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
+
+
+# start_epoch = 0
+# generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_30.pth')
+# discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_30.pth')
+# optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_30.pth')
+
+# if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
+#     generator.load_state_dict(torch.load(generator_checkpoint))
+#     print(f"Loaded generator checkpoint from epoch 30.")
+#     checkpoint = torch.load(discriminator_checkpoint)
+#     model_dict = discriminator.state_dict()
+#     pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and v.size() == model_dict[k].size()}
+#     model_dict.update(pretrained_dict)
+#     discriminator.load_state_dict(model_dict)
+#     print(f"Loaded discriminator checkpoint with partial matching from epoch 30.")
+#     optimizer_state = torch.load(optimizer_checkpoint)
+#     optimizer_G.load_state_dict(optimizer_state['optimizer_G'])
+#     optimizer_D.load_state_dict(optimizer_state['optimizer_D'])
+#     print("Loaded optimizer states.")
+#     start_epoch = 30  # Update start_epoch only if checkpoints exist
+# else:
+#     print("No checkpoint found. Starting from scratch.")
+
+
 # Training Parameters
 n_epochs = 300
 save_freq = 5  # Save every 5 epochs
 
+# Training Loop
 # Training Loop
 for epoch in range(n_epochs):
     for i, (real_A, real_B) in enumerate(train_loader):
@@ -99,11 +125,11 @@ for epoch in range(n_epochs):
         loss_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake))
         loss_D = 0.5 * (loss_real + loss_fake)
         optimizer_D.zero_grad()
-        loss_D.backward()  # No need for retain_graph here
+        loss_D.backward()
         optimizer_D.step()
 
         # Recompute fake_B for generator loss
-        fake_B = generator(real_A)  # Recompute to avoid using freed graph
+        fake_B = generator(real_A)
         fake_B_scales = [F.interpolate(fake_B[-1], size=(s, s)) for s in [32, 64, 128, 256]]
 
         # Generator Loss
@@ -112,13 +138,20 @@ for epoch in range(n_epochs):
         loss_pixel = criterion_pixelwise(fake_B[-1], real_B)
         loss_G = loss_GAN + 100 * loss_pixel
         optimizer_G.zero_grad()
-        loss_G.backward()  # No retain_graph needed now
+        loss_G.backward()
         optimizer_G.step()
 
         print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]")
 
-    # Save Model Checkpoints
+    # Save per-epoch models every `save_freq` epochs
     if (epoch + 1) % save_freq == 0 or epoch == n_epochs - 1:
         torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch+1}.pth'))
         torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch+1}.pth'))
-        print(f"Saved models for epoch {epoch+1}.")
+        torch.save({'optimizer_G': optimizer_G.state_dict(), 'optimizer_D': optimizer_D.state_dict()},
+                   os.path.join(SAVE_DIR, f'optimizer_epoch_{epoch+1}.pth'))
+        print(f"Saved models and optimizers for epoch {epoch+1}.")
+
+# Save final models
+torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
+torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, 'discriminator_final.pth'))
+print(f"Final generator and discriminator models saved to {SAVE_DIR}.")
