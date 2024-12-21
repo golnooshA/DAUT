@@ -64,8 +64,6 @@ print(f"Loaded dataset with {len(train_dataset)} valid samples.")
 # Initialize Models
 generator = Generator().cuda()
 discriminator = Discriminator().cuda()
-generator.apply(weights_init_normal)
-discriminator.apply(weights_init_normal)
 
 # Loss Functions
 criterion_GAN = nn.MSELoss().cuda()
@@ -75,38 +73,39 @@ criterion_pixelwise = nn.L1Loss().cuda()
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
+# Checkpoint Handling
+start_epoch = 0
+generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_25.pth')
+discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_25.pth')
+optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_25.pth')
 
-
-# start_epoch = 0
-# generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_30.pth')
-# discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_30.pth')
-# optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_30.pth')
-
-# if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
-#     generator.load_state_dict(torch.load(generator_checkpoint))
-#     print(f"Loaded generator checkpoint from epoch 30.")
-#     checkpoint = torch.load(discriminator_checkpoint)
-#     model_dict = discriminator.state_dict()
-#     pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and v.size() == model_dict[k].size()}
-#     model_dict.update(pretrained_dict)
-#     discriminator.load_state_dict(model_dict)
-#     print(f"Loaded discriminator checkpoint with partial matching from epoch 30.")
-#     optimizer_state = torch.load(optimizer_checkpoint)
-#     optimizer_G.load_state_dict(optimizer_state['optimizer_G'])
-#     optimizer_D.load_state_dict(optimizer_state['optimizer_D'])
-#     print("Loaded optimizer states.")
-#     start_epoch = 30  # Update start_epoch only if checkpoints exist
-# else:
-#     print("No checkpoint found. Starting from scratch.")
-
+if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
+    generator.load_state_dict(torch.load(generator_checkpoint))
+    print(f"Loaded generator checkpoint from epoch 25.")
+    
+    checkpoint = torch.load(discriminator_checkpoint)
+    model_dict = discriminator.state_dict()
+    pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and v.size() == model_dict[k].size()}
+    model_dict.update(pretrained_dict)
+    discriminator.load_state_dict(model_dict)
+    print(f"Loaded discriminator checkpoint with partial matching from epoch 25.")
+    
+    optimizer_state = torch.load(optimizer_checkpoint)
+    optimizer_G.load_state_dict(optimizer_state['optimizer_G'])
+    optimizer_D.load_state_dict(optimizer_state['optimizer_D'])
+    print("Loaded optimizer states.")
+    start_epoch = 25  # Update start_epoch only if checkpoints exist
+else:
+    print("No checkpoint found. Starting from scratch.")
+    generator.apply(weights_init_normal)
+    discriminator.apply(weights_init_normal)
 
 # Training Parameters
 n_epochs = 300
 save_freq = 5  # Save every 5 epochs
 
 # Training Loop
-# Training Loop
-for epoch in range(n_epochs):
+for epoch in range(start_epoch, n_epochs):  # Start from the resumed epoch
     for i, (real_A, real_B) in enumerate(train_loader):
         real_A, real_B = real_A.cuda(), real_B.cuda()
 
