@@ -13,8 +13,8 @@ from skimage.measure import shannon_entropy
 PATH_INPUT = './dataset/UIEB/input'
 PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed'
 PATH_GT = './dataset/UIEB/GT/'
-# SAVE_DIR = './save_model'
-SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+SAVE_DIR = './save_model'
+# SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -104,9 +104,9 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5
 
 # Resume from checkpoint
 start_epoch = 0
-generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_15.pth')
-discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_15.pth')
-optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_15.pth')
+generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_40.pth')
+discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_40.pth')
+optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_40.pth')
 
 if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
     generator.load_state_dict(torch.load(generator_checkpoint))
@@ -118,8 +118,8 @@ if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpo
     optimizer_states = torch.load(optimizer_checkpoint)
     optimizer_G.load_state_dict(optimizer_states['optimizer_G'])
     optimizer_D.load_state_dict(optimizer_states['optimizer_D'])
-    print("Resuming from checkpoint at epoch 15.")
-    start_epoch = 15
+    print("Resuming from checkpoint at epoch 40.")
+    start_epoch = 40
 else:
     print("No checkpoint found. Starting from scratch.")
 
