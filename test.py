@@ -74,7 +74,7 @@ def main():
     path_images = './dataset/UIEB/input' # Update to your input images path
     path_depth = './DPT/output_monodepth/UIEB_Changed'  # Update to your depth maps path
     output_path = 'test/after' # Update to your output path
-    generator_path = 'save_model/generator_epoch_25.pth'  # Corrected: Removed trailing slash
+    generator_path = 'save_model/generator_epoch_155.pth'  # Corrected: Removed trailing slash
     
     # Device configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
