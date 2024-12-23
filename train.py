@@ -16,7 +16,6 @@ PATH_GT = './dataset/UIEB/GT/'
 # SAVE_DIR = './save_model'
 SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
-
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # UCIQE Calculation
@@ -103,12 +102,29 @@ def edge_aware_loss(output, target):
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999))
 
+# Resume from checkpoint
+start_epoch = 0
+# generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_30.pth')
+# discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_30.pth')
+# optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_30.pth')
+
+# if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
+#     generator.load_state_dict(torch.load(generator_checkpoint))
+#     discriminator.load_state_dict(torch.load(discriminator_checkpoint))
+#     optimizer_states = torch.load(optimizer_checkpoint)
+#     optimizer_G.load_state_dict(optimizer_states['optimizer_G'])
+#     optimizer_D.load_state_dict(optimizer_states['optimizer_D'])
+#     print("Resuming from checkpoint at epoch 30.")
+#     start_epoch = 30
+# else:
+#     print("No checkpoint found. Starting from scratch.")
+
 # Training Parameters
 n_epochs = 300
 save_freq = 5  # Save every 5 epochs
 
 # Training Loop
-for epoch in range(n_epochs):
+for epoch in range(start_epoch, n_epochs):
     for i, (real_A, real_B) in enumerate(train_loader):
         real_A, real_B = real_A.cuda(), real_B.cuda()
 
@@ -146,17 +162,15 @@ for epoch in range(n_epochs):
         loss_G.backward()
         optimizer_G.step()
 
-        # UCIQE Calculation
-        fake_image = fake_B[-1][0].detach().permute(1, 2, 0).cpu().numpy()  # Detach the tensor before converting to NumPy
-        fake_image = (fake_image * 255).astype(np.uint8)  # Rescale for UCIQE calculation
-        uciqe = calculate_uciqe(fake_image)
-        print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}] [UCIQE: {uciqe:.4f}]")
+        print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] [D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}]")
 
-    # Save per-epoch models every `save_freq` epochs
+    # Save per-epoch models and optimizers
     if (epoch + 1) % save_freq == 0 or epoch == n_epochs - 1:
         torch.save(generator.state_dict(), os.path.join(SAVE_DIR, f'generator_epoch_{epoch+1}.pth'))
         torch.save(discriminator.state_dict(), os.path.join(SAVE_DIR, f'discriminator_epoch_{epoch+1}.pth'))
-        print(f"Saved models for epoch {epoch+1}.")
+        torch.save({'optimizer_G': optimizer_G.state_dict(), 'optimizer_D': optimizer_D.state_dict()},
+                   os.path.join(SAVE_DIR, f'optimizer_epoch_{epoch+1}.pth'))
+        print(f"Saved models and optimizers for epoch {epoch+1}.")
 
 # Save final models
 torch.save(generator.state_dict(), os.path.join(SAVE_DIR, 'generator_final.pth'))
