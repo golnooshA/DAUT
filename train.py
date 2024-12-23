@@ -104,20 +104,24 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5
 
 # Resume from checkpoint
 start_epoch = 0
-# generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_30.pth')
-# discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_30.pth')
-# optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_30.pth')
+generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_15.pth')
+discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_15.pth')
+optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_15.pth')
 
-# if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
-#     generator.load_state_dict(torch.load(generator_checkpoint))
-#     discriminator.load_state_dict(torch.load(discriminator_checkpoint))
-#     optimizer_states = torch.load(optimizer_checkpoint)
-#     optimizer_G.load_state_dict(optimizer_states['optimizer_G'])
-#     optimizer_D.load_state_dict(optimizer_states['optimizer_D'])
-#     print("Resuming from checkpoint at epoch 30.")
-#     start_epoch = 30
-# else:
-#     print("No checkpoint found. Starting from scratch.")
+if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
+    generator.load_state_dict(torch.load(generator_checkpoint))
+    checkpoint = torch.load(discriminator_checkpoint)
+    model_dict = discriminator.state_dict()
+    pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and v.size() == model_dict[k].size()}
+    model_dict.update(pretrained_dict)
+    discriminator.load_state_dict(model_dict)
+    optimizer_states = torch.load(optimizer_checkpoint)
+    optimizer_G.load_state_dict(optimizer_states['optimizer_G'])
+    optimizer_D.load_state_dict(optimizer_states['optimizer_D'])
+    print("Resuming from checkpoint at epoch 15.")
+    start_epoch = 15
+else:
+    print("No checkpoint found. Starting from scratch.")
 
 # Training Parameters
 n_epochs = 300
