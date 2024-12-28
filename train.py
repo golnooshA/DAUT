@@ -104,9 +104,9 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5
 
 # Resume from checkpoint
 start_epoch = 0
-generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_255.pth')
-discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_255.pth')
-optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_255.pth')
+generator_checkpoint = os.path.join(SAVE_DIR, 'generator_epoch_265.pth')
+discriminator_checkpoint = os.path.join(SAVE_DIR, 'discriminator_epoch_265.pth')
+optimizer_checkpoint = os.path.join(SAVE_DIR, 'optimizer_epoch_265.pth')
 
 if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpoint) and os.path.exists(optimizer_checkpoint):
     generator.load_state_dict(torch.load(generator_checkpoint))
@@ -118,8 +118,8 @@ if os.path.exists(generator_checkpoint) and os.path.exists(discriminator_checkpo
     optimizer_states = torch.load(optimizer_checkpoint)
     optimizer_G.load_state_dict(optimizer_states['optimizer_G'])
     optimizer_D.load_state_dict(optimizer_states['optimizer_D'])
-    print("Resuming from checkpoint at epoch 255.")
-    start_epoch = 255
+    print("Resuming from checkpoint at epoch 265.")
+    start_epoch = 265
 else:
     print("No checkpoint found. Starting from scratch.")
 
