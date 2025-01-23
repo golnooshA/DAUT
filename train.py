@@ -13,6 +13,8 @@ import torchvision.transforms as transforms
 PATH_INPUT = './dataset/UIEB/input'
 PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed/'
 PATH_GT = './dataset/UIEB/GT/'
+# SAVE_DIR = './save_model/'
+
 SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
 
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -89,7 +91,7 @@ if __name__ == "__main__":
     valid_indices = filter_invalid_files(train_dataset)
     train_dataset = torch.utils.data.Subset(train_dataset, valid_indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, num_workers=0)
     print(f"Loaded dataset with {len(train_dataset)} valid samples.")
 
     generator = Generator(input_channels=4, output_channels=4).cuda()
