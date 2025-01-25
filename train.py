@@ -13,9 +13,7 @@ import torchvision.transforms as transforms
 PATH_INPUT = './dataset/UIEB/input'
 PATH_DEPTH = './DPT/output_monodepth/UIEB_Changed/'
 PATH_GT = './dataset/UIEB/GT/'
-# SAVE_DIR = './save_model/'
-
-SAVE_DIR = '/content/drive/My Drive/My_Datasets/save_model/'
+SAVE_DIR = './save_model/'
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -124,10 +122,7 @@ if __name__ == "__main__":
             real_A, real_B = real_A.cuda(), real_B.cuda()
 
             optimizer_G.zero_grad()
-            fake_B = generator(real_A)
-
-            if isinstance(fake_B, (list, tuple)):
-                fake_B = fake_B[-1]
+            fake_B = generator(real_A)[-1]  # Ensure using the final output only
 
             pred_fake = discriminator(torch.cat([real_A, fake_B], dim=1))
             loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
@@ -137,7 +132,7 @@ if __name__ == "__main__":
             real_features = vgg(real_B[:, :3])
             loss_perceptual = criterion_pixelwise(fake_features, real_features)
 
-            loss_G = loss_GAN + 10 * loss_pixel + loss_perceptual
+            loss_G = 1.0 * loss_GAN + 10 * loss_pixel + 0.1 * loss_perceptual
             loss_G.backward()
             optimizer_G.step()
 
