@@ -184,8 +184,8 @@ def main():
     # Paths to input, depth, and output directories
     path_images = './dataset/UIEB/input'
     path_depth = './DPT/output_monodepth/UIEB_Changed'
-    output_path = './test/n'
-    generator_path = './save_model/generator_final.pth'
+    output_path = './test/edit'
+    generator_path = './save_model/generator_epoch_250.pth'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     os.makedirs(output_path, exist_ok=True)

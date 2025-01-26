@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import torch.nn.functional as F
+from torchvision.models import vgg16
+from torchvision.transforms import Normalize
 from net.Ushape_attention import Generator, Discriminator
 import numpy as np
 
@@ -52,18 +54,34 @@ class DepthDataset(Dataset):
 
         return real_A, real_B
 
+# Perceptual Loss Class
+class VGGPerceptualLoss(nn.Module):
+    def __init__(self):
+        super(VGGPerceptualLoss, self).__init__()
+        vgg = vgg16(pretrained=True).features[:16]  # Use the first few layers of VGG16
+        self.vgg = nn.Sequential(*list(vgg.children()))
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+        self.normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+    def forward(self, fake, real):
+        fake_norm = self.normalize(fake)
+        real_norm = self.normalize(real)
+        fake_features = self.vgg(fake_norm)
+        real_features = self.vgg(real_norm)
+        return torch.nn.functional.l1_loss(fake_features, real_features)
+
 # Loss Functions
 criterion_GAN = nn.MSELoss().cuda()
 criterion_pixelwise = nn.L1Loss().cuda()
+criterion_perceptual = VGGPerceptualLoss().cuda()
 
 def histogram_loss(output, target):
-    """Match the histogram of the output to the target."""
     output_hist = torch.histc(output, bins=256, min=0, max=1)
     target_hist = torch.histc(target, bins=256, min=0, max=1)
-    output_hist = output_hist / output_hist.sum()  # Normalize histogram
-    target_hist = target_hist / target_hist.sum()  # Normalize histogram
+    output_hist = output_hist / output_hist.sum()
+    target_hist = target_hist / target_hist.sum()
     return torch.sum((output_hist - target_hist) ** 2)
-
 
 # Initialize Models
 generator = Generator(input_channels=4, output_channels=4).cuda()
@@ -71,7 +89,7 @@ discriminator = Discriminator(input_channels=8).cuda()
 
 # Optimizers
 optimizer_G = torch.optim.Adam(generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
-optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
+optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=0.00005, betas=(0.5, 0.999))
 
 # Training Loop
 n_epochs = 300
@@ -84,7 +102,7 @@ for epoch in range(n_epochs):
 
         # Train Discriminator
         optimizer_D.zero_grad()
-        fake_B = torch.clamp(generator(real_A)[-1], 0, 1)  # Use final output and clamp to [0, 1]
+        fake_B = torch.clamp(generator(real_A)[-1], 0, 1)
         pred_real = discriminator(torch.cat([real_A, real_B], dim=1))
         pred_fake = discriminator(torch.cat([real_A, fake_B.detach()], dim=1))
         loss_real = criterion_GAN(pred_real, torch.ones_like(pred_real))
@@ -98,16 +116,16 @@ for epoch in range(n_epochs):
         pred_fake = discriminator(torch.cat([real_A, fake_B], dim=1))
         loss_GAN = criterion_GAN(pred_fake, torch.ones_like(pred_fake))
         loss_pixel = criterion_pixelwise(fake_B, real_B)
-        loss_histogram = histogram_loss(fake_B, real_B)  # Adjusted histogram loss
-        loss_G = loss_GAN + 10 * loss_pixel + 0.1 * loss_histogram  # Adjusted weights
+        loss_histogram = histogram_loss(fake_B, real_B)
+        loss_perceptual = criterion_perceptual(fake_B[:, :3, :, :], real_B[:, :3, :, :])  # Only RGB channels
+        loss_G = loss_GAN + 15 * loss_pixel + 0.5 * loss_histogram + 0.2 * loss_perceptual
         loss_G.backward()
         optimizer_G.step()
 
         print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] "
               f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}] "
-              f"[GAN loss: {loss_GAN.item():.4f}] [Pixel loss: {loss_pixel.item():.4f}] [Histogram loss: {loss_histogram.item():.4f}]")
-
-
+              f"[GAN loss: {loss_GAN.item():.4f}] [Pixel loss: {loss_pixel.item():.4f}] "
+              f"[Histogram loss: {loss_histogram.item():.4f}] [Perceptual loss: {loss_perceptual.item():.4f}]")
 
     # Save model checkpoints every 5 epochs
     if (epoch + 1) % 5 == 0:

@@ -121,7 +121,7 @@ def evaluate_metrics(enhanced_dir, gt_dir, output_csv):
 
 if __name__ == "__main__":
     # Paths to the directories
-    ENHANCED_DIR = './test/n/'     # Directory containing enhanced images
+    ENHANCED_DIR = './test/edit/'     # Directory containing enhanced images
     GT_DIR = './dataset/UIEB/GT/'  # Directory containing ground truth images
     OUTPUT_CSV = './evaluation_results.csv'  # Path to save evaluation results
 
