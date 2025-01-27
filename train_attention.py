@@ -83,6 +83,9 @@ def histogram_loss(output, target):
     target_hist = target_hist / target_hist.sum()
     return torch.sum((output_hist - target_hist) ** 2)
 
+def color_loss(output, target):
+    return torch.mean(torch.abs(torch.mean(output, dim=(2, 3)) - torch.mean(target, dim=(2, 3))))
+
 # Initialize Models
 generator = Generator(input_channels=4, output_channels=4).cuda()
 discriminator = Discriminator(input_channels=8).cuda()
@@ -118,14 +121,16 @@ for epoch in range(n_epochs):
         loss_pixel = criterion_pixelwise(fake_B, real_B)
         loss_histogram = histogram_loss(fake_B, real_B)
         loss_perceptual = criterion_perceptual(fake_B[:, :3, :, :], real_B[:, :3, :, :])  # Only RGB channels
-        loss_G = loss_GAN + 15 * loss_pixel + 0.5 * loss_histogram + 0.2 * loss_perceptual
+        loss_color = color_loss(fake_B[:, :3, :, :], real_B[:, :3, :, :])
+        loss_G = loss_GAN + 15 * loss_pixel + 1.0 * loss_histogram + 0.2 * loss_perceptual + 0.1 * loss_color
         loss_G.backward()
         optimizer_G.step()
 
         print(f"[Epoch {epoch+1}/{n_epochs}] [Batch {i+1}/{len(train_loader)}] "
               f"[D loss: {loss_D.item():.4f}] [G loss: {loss_G.item():.4f}] "
               f"[GAN loss: {loss_GAN.item():.4f}] [Pixel loss: {loss_pixel.item():.4f}] "
-              f"[Histogram loss: {loss_histogram.item():.4f}] [Perceptual loss: {loss_perceptual.item():.4f}]")
+              f"[Histogram loss: {loss_histogram.item():.4f}] [Perceptual loss: {loss_perceptual.item():.4f}] "
+              f"[Color loss: {loss_color.item():.4f}]")
 
     # Save model checkpoints every 5 epochs
     if (epoch + 1) % 5 == 0:
