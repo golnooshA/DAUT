@@ -20,31 +20,30 @@ def calculate_psnr(img1, img2):
 def calculate_uciqe(image):
     """
     Compute UCIQE (Underwater Color Image Quality Evaluation) for an image.
-    Ensures all components are normalized to the [0, 1] range.
     """
-    # Ensure the image is in the [0, 255] range for LAB conversion
+    # Ensure image is in range [0, 255] for LAB conversion
     image = (image * 255).astype(np.uint8)
     lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
     L, A, B = cv2.split(lab)
 
     # Contrast of Luminance
-    L_contrast = np.std(L) / 100.0  # Normalize by dividing by 100 to ensure [0, 1] range
+    L_contrast = np.std(L) / 50.0  # Adjusted normalization factor
 
     # Average chroma (colorfulness)
     chroma = np.sqrt(A**2 + B**2)
-    chroma_mean = np.mean(chroma) / 128.0  # Normalize by dividing by 128 to ensure [0, 1] range
+    chroma_mean = np.mean(chroma) / 100.0  # Less aggressive normalization
 
-    # Saturation
+    # Saturation calculation
     L_normalized = np.maximum(L / 255.0, 1e-6)  # Avoid division by zero
-    saturation = chroma / L_normalized  # Saturation based on normalized luminance
-    saturation_mean = np.mean(saturation) / 10.0  # Normalize by dividing by 10 to ensure [0, 1] range
+    saturation = chroma / L_normalized
+    saturation_mean = np.mean(saturation) / 5.0  # Less aggressive normalization
 
-    # Ensure all values are in the expected range
+    # Ensure all values are within range [0,1]
     L_contrast = np.clip(L_contrast, 0, 1)
     chroma_mean = np.clip(chroma_mean, 0, 1)
     saturation_mean = np.clip(saturation_mean, 0, 1)
 
-    # UCIQE Calculation
+    # Compute final UCIQE score
     uciqe = 0.4680 * L_contrast + 0.2745 * chroma_mean + 0.2576 * saturation_mean
     return uciqe
 
