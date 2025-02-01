@@ -67,7 +67,7 @@ def main():
     path_images = './dataset/UIEB/input'
     path_depth = './DPT/output_monodepth/UIEB_Changed'
     output_path = './test/good'
-    generator_path = './save_model/good train values/generator_final.pth'
+    generator_path = './save_model/generator_final.pth'
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dtype = np.float32
