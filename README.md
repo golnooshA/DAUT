@@ -7,7 +7,7 @@
 
 ## 📌 Overview
 
-This project proposes a novel enhancement to the **Depth-Aware U-Shape Transformer (DAUT)** architecture to improve **underwater image enhancement** using **monocular depth estimation**, **channel attention**, and **histogram loss**.
+This project proposes a novel enhancement to the [**Depth-Aware U-Shape Transformer (DAUT)**](https://github.com/MBadran2000/Depth-Aware-U-shape-Transformer) architecture to improve **underwater image enhancement** using **monocular depth estimation**, **channel attention**, and **histogram loss**.
 
 Underwater imagery often suffers from severe visibility issues due to **color distortion**, **light scattering**, and **low contrast**. This work aims to restore natural color tones and details by integrating depth-awareness into the image enhancement pipeline.
 
